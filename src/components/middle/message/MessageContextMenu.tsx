@@ -121,6 +121,7 @@ type OwnProps = {
   onReply?: NoneToVoidFunction;
   onOpenThread?: VoidFunction;
   onEdit?: NoneToVoidFunction;
+  onEditHtml?: NoneToVoidFunction;
   onAppendTodoList?: NoneToVoidFunction;
   onPin?: NoneToVoidFunction;
   onUnpin?: NoneToVoidFunction;
@@ -229,6 +230,7 @@ const MessageContextMenu = ({
   onReply,
   onOpenThread,
   onEdit,
+  onEditHtml,
   onAppendTodoList,
   onPin,
   onUnpin,
@@ -492,6 +494,7 @@ const MessageContextMenu = ({
           </MenuItem>
         )}
         {canEdit && <MenuItem icon="edit" onClick={onEdit}>{lang('Edit')}</MenuItem>}
+        {onEditHtml && <MenuItem icon="edit" onClick={onEditHtml}>{lang('MessageHtmlEdit')}</MenuItem>}
         {canAppendTodoList && (
           <MenuItem icon="add" onClick={onAppendTodoList}>
             {lang('MenuButtonAppendTodoList')}

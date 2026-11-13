@@ -9,6 +9,7 @@ export interface ApiRichMessage {
 
 export interface ApiInputRichMessage {
   blocks: ApiPageBlock[];
+  html?: string;
   isRtl?: true;
   shouldDisableAutoLink?: true;
 }

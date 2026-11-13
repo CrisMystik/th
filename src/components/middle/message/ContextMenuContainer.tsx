@@ -115,6 +115,7 @@ export type OwnProps = {
   className?: string;
   onClose: NoneToVoidFunction;
   onCloseAnimationEnd: NoneToVoidFunction;
+  onEditHtml?: (messageId: number) => void;
 };
 
 type StateProps = {
@@ -259,6 +260,7 @@ const ContextMenuContainer = ({
   isMessageProtected,
   onClose,
   onCloseAnimationEnd,
+  onEditHtml,
 }: OwnProps & StateProps) => {
   const {
     openThread,
@@ -557,6 +559,12 @@ const ContextMenuContainer = ({
       chatId: message.chatId,
       threadId: message.id,
     });
+    closeMenu();
+  });
+
+  const handleEditHtml = useLastCallback(() => {
+    const messageId = message.isInAlbum ? selectAlbumMessageIdToEdit(getGlobal(), message) : message.id;
+    onEditHtml?.(messageId);
     closeMenu();
   });
 
@@ -880,6 +888,7 @@ const ContextMenuContainer = ({
         onOpenThread={handleOpenThread}
         onReply={handleReply}
         onEdit={handleEdit}
+        onEditHtml={canEdit && onEditHtml && !message.content.todo ? handleEditHtml : undefined}
         onAppendTodoList={handleAppendTodoList}
         onPin={handlePin}
         onUnpin={handleUnpin}

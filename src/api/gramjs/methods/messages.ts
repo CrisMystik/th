@@ -650,7 +650,21 @@ export function sendApiMessage(
       }
 
       cancelSendingStatusTimeout();
-      if (update) handleLocalMessageUpdate(localMessage, update);
+      if (update) {
+        handleLocalMessageUpdate(localMessage, update);
+        if (richMessage?.html !== undefined && update instanceof GramJs.UpdateShortSentMessage) {
+          const result = await fetchRichMessage({ chat, messageId: update.id }).catch(() => undefined);
+          if (result) {
+            sendApiUpdate({
+              '@type': 'updateMessage',
+              id: update.id,
+              chatId: chat.id,
+              message: result.message,
+              isFull: true,
+            });
+          }
+        }
+      }
     } catch (error: any) {
       cancelSendingStatusTimeout();
 
@@ -1070,6 +1084,7 @@ export async function editMessage({
   richMessage,
   attachment,
   noWebPage,
+  shouldReportResult,
 }: {
   chat: ApiChat;
   message: ApiMessage;
@@ -1078,7 +1093,8 @@ export async function editMessage({
   richMessage?: ApiInputRichMessage;
   attachment?: ApiAttachment;
   noWebPage?: boolean;
-}, onProgress?: ApiOnProgress) {
+  shouldReportResult?: boolean;
+}, onProgress?: ApiOnProgress): Promise<true | string | undefined> {
   const isScheduled = message.date * 1000 > getServerTime() * 1000;
   const { video } = message.content;
   const isCoverOnlyEdit = Boolean(
@@ -1089,7 +1105,7 @@ export async function editMessage({
   const media = attachment && !isCoverOnlyEdit ? buildUploadingMedia(attachment) : undefined;
   const inputRichMessage = richMessage && buildInputRichMessage(richMessage);
   if (richMessage && (!inputRichMessage || media)) {
-    return;
+    return undefined;
   }
 
   const isInvertedMedia = text && !attachment?.shouldSendAsFile ? message.isInvertedMedia : undefined;
@@ -1113,13 +1129,15 @@ export async function editMessage({
     isInvertedMedia,
   };
 
-  sendApiUpdate({
-    '@type': isScheduled ? 'updateScheduledMessage' : 'updateMessage',
-    id: message.id,
-    chatId: chat.id,
-    message: messageUpdate,
-    isFull: true,
-  });
+  if (!shouldReportResult && richMessage?.html === undefined) {
+    sendApiUpdate({
+      '@type': isScheduled ? 'updateScheduledMessage' : 'updateMessage',
+      id: message.id,
+      chatId: chat.id,
+      message: messageUpdate,
+      isFull: true,
+    });
+  }
 
   try {
     let mediaUpdate: GramJs.TypeInputMedia | undefined;
@@ -1131,7 +1149,7 @@ export async function editMessage({
 
     const mtpEntities = entities && entities.map(buildMtpMessageEntity);
 
-    await invokeRequest(new GramJs.messages.EditMessage({
+    const result = await invokeRequest(new GramJs.messages.EditMessage({
       message: richMessage ? undefined : text,
       entities: richMessage ? undefined : mtpEntities,
       richMessage: inputRichMessage,
@@ -1143,6 +1161,7 @@ export async function editMessage({
       ...(noWebPage && { noWebpage: noWebPage }),
       ...(isInvertedMedia && { invertMedia: isInvertedMedia }),
     }), { shouldThrow: true });
+    return result ? true : undefined;
   } catch (err) {
     if (DEBUG) {
       // eslint-disable-next-line no-console
@@ -1150,6 +1169,9 @@ export async function editMessage({
     }
 
     const apiError = buildApiError(err as Error);
+    if (shouldReportResult) {
+      return apiError.message === 'MESSAGE_NOT_MODIFIED' ? true : apiError.message || undefined;
+    }
 
     sendApiUpdate({
       '@type': 'error',
@@ -1159,15 +1181,18 @@ export async function editMessage({
       },
     });
 
-    // Rollback changes
-    sendApiUpdate({
-      '@type': isScheduled ? 'updateScheduledMessage' : 'updateMessage',
-      id: message.id,
-      chatId: chat.id,
-      message,
-      isFull: true,
-    });
+    // Roll back the optimistic edit when one was applied.
+    if (richMessage?.html === undefined) {
+      sendApiUpdate({
+        '@type': isScheduled ? 'updateScheduledMessage' : 'updateMessage',
+        id: message.id,
+        chatId: chat.id,
+        message,
+        isFull: true,
+      });
+    }
   }
+  return undefined;
 }
 
 function canSendRichMessage(params: SendMessageParams) {

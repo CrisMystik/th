@@ -228,6 +228,15 @@ export interface LangPair {
   'CallRateLabel': undefined;
   'CallRateComment': undefined;
   'Send': undefined;
+  'MessageHtmlSend': undefined;
+  'MessageHtmlSendRich': undefined;
+  'MessageHtmlEdit': undefined;
+  'MessageHtmlCaption': undefined;
+  'MessageHtmlSource': undefined;
+  'MessageHtmlSave': undefined;
+  'MessageHtmlInvalid': undefined;
+  'MessageHtmlSaveFailed': undefined;
+  'MessageHtmlUnavailable': undefined;
   'RequestPeerRequirements': undefined;
   'RequestPeerReqPremium': undefined;
   'RequestPeerReqNoPremium': undefined;

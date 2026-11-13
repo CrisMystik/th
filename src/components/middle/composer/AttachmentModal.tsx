@@ -30,6 +30,8 @@ import { validateFiles } from '../../../util/files';
 import { formatStarsAsIcon } from '../../../util/localization/format';
 import { removeAllSelections } from '../../../util/selection';
 import { openSystemFilesDialog } from '../../../util/systemFilesDialog';
+import { parseMessageHtml, serializeFormattedHtml } from '../../../util/text/messageHtml';
+import { getUtf8Length } from '../../../util/text/textFormat';
 import { getAttachedStickers } from '../../ui/mediaEditor/editDocument';
 import { checkCanEncodeVideo } from '../../ui/mediaEditor/export/videoCapabilities';
 import { fetchVideoProbe } from '../../ui/mediaEditor/export/videoProbe';
@@ -56,6 +58,7 @@ import MenuItem from '../../ui/MenuItem';
 import Modal from '../../ui/Modal';
 import AttachmentModalItem from './AttachmentModalItem';
 import CustomSendMenu from './CustomSendMenu.async';
+import MessageHtmlModal from './MessageHtmlModal';
 import MessageInput from './MessageInput.async';
 import SymbolMenuButton from './SymbolMenuButton';
 
@@ -167,6 +170,18 @@ const AttachmentModal = ({
 
   const lang = useLang();
   const richValue = richEditor.value;
+  const [captionHtml, setCaptionHtml] = useState<string>();
+  const handleOpenCaptionHtml = useLastCallback(() => {
+    const formatted = getRichInputAsFormatted(richEditor.getValue());
+    setCaptionHtml(serializeFormattedHtml(formatted || { text: '' }));
+  });
+  const handleCloseCaptionHtml = useLastCallback(() => setCaptionHtml(undefined));
+  const handleApplyCaptionHtml = useLastCallback((html: string) => {
+    const formatted = parseMessageHtml(html);
+    if (getUtf8Length(formatted.text) > captionLimit) return false;
+    if (html !== captionHtml) richEditor.replaceValue(buildRichMessageFromFormatted(formatted));
+    return true;
+  });
 
   const mainButtonRef = useRef<HTMLButtonElement>();
   const inputRef = useRef<HTMLDivElement>();
@@ -947,6 +962,23 @@ const AttachmentModal = ({
               shouldSuppressFocus={isMobile && isSymbolMenuOpen}
               onSuppressedFocus={closeSymbolMenu}
             />
+            <Button
+              round
+              size="tiny"
+              color="translucent"
+              iconName="edit"
+              ariaLabel={lang('MessageHtmlCaption')}
+              onClick={handleOpenCaptionHtml}
+            />
+            {captionHtml !== undefined && isOpen && (
+              <MessageHtmlModal
+                title="MessageHtmlCaption"
+                submitLabel="Save"
+                initialValue={captionHtml}
+                onClose={handleCloseCaptionHtml}
+                onSubmit={handleApplyCaptionHtml}
+              />
+            )}
             <div className={styles.sendWrapper}>
               <Button
                 ref={mainButtonRef}

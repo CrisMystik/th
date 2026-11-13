@@ -71,6 +71,8 @@ export type OwnProps = {
   onDateInsert: (text: ApiFormattedText) => void;
   onTodoListCreate: NoneToVoidFunction;
   onRichInputExpand: NoneToVoidFunction;
+  onSendHtml?: NoneToVoidFunction;
+  onSendRichHtml?: NoneToVoidFunction;
   onMenuOpen: NoneToVoidFunction;
   onMenuClose: NoneToVoidFunction;
 };
@@ -107,6 +109,8 @@ const AttachMenu = ({
   onMenuClose,
   onTodoListCreate,
   onRichInputExpand,
+  onSendHtml,
+  onSendRichHtml,
 }: OwnProps) => {
   const {
     openPollModal,
@@ -144,6 +148,15 @@ const AttachMenu = ({
       onMenuClose();
     }
   }, [isMenuOpen, onMenuClose, onMenuOpen]);
+
+  const handleSendHtml = useLastCallback(() => {
+    closeAttachMenu();
+    onSendHtml?.();
+  });
+  const handleSendRichHtml = useLastCallback(() => {
+    closeAttachMenu();
+    onSendRichHtml?.();
+  });
 
   const handleToggleAttachMenu = useLastCallback(() => {
     if (isAttachMenuOpen) {
@@ -279,6 +292,12 @@ const AttachMenu = ({
            ** Using ternary operator here causes some attributes from first clause
            ** transferring to the fragment content in the second clause
            */}
+            {onSendHtml && (
+              <MenuItem icon="edit" onClick={handleSendHtml}>{lang('MessageHtmlSend')}</MenuItem>
+            )}
+            {onSendRichHtml && (
+              <MenuItem icon="edit" onClick={handleSendRichHtml}>{lang('MessageHtmlSendRich')}</MenuItem>
+            )}
             {!canAttachMedia && (
               <MenuItem className="media-disabled" disabled>
                 {lang(messageListType === 'scheduled' && paidMessagesStars

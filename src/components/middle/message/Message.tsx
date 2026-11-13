@@ -8,7 +8,7 @@ import {
   useState,
   useUnmountCleanup,
 } from '../../../lib/teact/teact';
-import { getActions, withGlobal } from '../../../global';
+import { getActions, getGlobal, getPromiseActions, withGlobal } from '../../../global';
 
 import type {
   ApiAvailableEffect,
@@ -89,6 +89,7 @@ import {
   selectChatFullInfo,
   selectChatMessage,
   selectChatTranslations,
+  selectCurrentMessageList,
   selectCurrentMiddleSearch,
   selectDefaultReaction,
   selectEphemeralOutgoingStatus,
@@ -114,6 +115,7 @@ import {
   selectRequestedChatTranslationLanguage,
   selectRequestedChatTranslationTone,
   selectRequestedMessageTranslationLanguage,
+  selectScheduledMessage,
   selectSender,
   selectSenderFromHeader,
   selectShouldDetectChatLanguage,
@@ -124,6 +126,7 @@ import {
   selectUploadProgress,
   selectUser,
 } from '../../../global/selectors';
+import { selectCurrentLimit } from '../../../global/selectors/limits';
 import {
   selectIsMediaNsfw,
   selectMessageDownloadableMedia,
@@ -141,7 +144,10 @@ import { getMessageKey } from '../../../util/keys/messageKey';
 import { parseTranslationCacheKey } from '../../../util/keys/translationKey';
 import { getServerTime } from '../../../util/serverTime';
 import stopEvent from '../../../util/stopEvent';
+import { parseMessageHtml, serializeFormattedHtml } from '../../../util/text/messageHtml';
+import { serializeRichHtml } from '../../../util/text/richMessageHtml';
 import { getRichQuoteTexts } from '../../../util/text/richQuote';
+import { getUtf8Length } from '../../../util/text/textFormat';
 import { isElementInViewport } from '../../../util/visibility/isElementInViewport';
 import { getStickerDimensions, REM } from '../../common/helpers/mediaDimensions';
 import renderText from '../../common/helpers/renderText';
@@ -191,6 +197,7 @@ import UnsupportedPlate from '../../common/UnsupportedPlate';
 import Button from '../../ui/Button';
 import ConfirmDialog from '../../ui/ConfirmDialog';
 import InputText from '../../ui/InputText';
+import MessageHtmlModal from '../composer/MessageHtmlModal';
 import Album from './Album';
 import AnimatedCustomEmoji from './AnimatedCustomEmoji';
 import AnimatedEmoji from './AnimatedEmoji';
@@ -515,6 +522,8 @@ const Message = ({
     markPollVotesRead,
     openThread,
     summarizeMessage,
+    editMessage,
+    showNotification,
   } = getActions();
 
   const ref = useRef<HTMLDivElement>();
@@ -537,6 +546,66 @@ const Message = ({
   const [isShowingSummary, showSummary, hideSummary] = useFlag();
   const [declineReason, setDeclineReason] = useState('');
   const { isMobile, isTouchScreen } = useAppLayout();
+  const [htmlEdit, setHtmlEdit] = useState<{ message: ApiMessage; source: string }>();
+
+  const handleOpenHtmlEdit = useLastCallback(async (id: number) => {
+    const isScheduled = messageListType === 'scheduled' || undefined;
+    const selectMessage = isScheduled ? selectScheduledMessage : selectChatMessage;
+    let target = selectMessage(getGlobal(), chatId, id);
+    if (target?.content.richMessage?.isPart) {
+      await getPromiseActions().loadRichMessage({ chatId, messageId: id, isScheduled });
+      target = selectMessage(getGlobal(), chatId, id);
+    }
+    if (!target || target.content.richMessage?.isPart) {
+      showNotification({ message: { key: 'MessageHtmlUnavailable' } });
+      return;
+    }
+    try {
+      const { richMessage, text } = target.content;
+      const source = richMessage ? serializeRichHtml(richMessage.blocks) : serializeFormattedHtml(text || { text: '' });
+      setHtmlEdit({ message: target, source });
+    } catch {
+      showNotification({ message: { key: 'MessageHtmlUnavailable' } });
+    }
+  });
+
+  const handleCloseHtmlEdit = useLastCallback(() => setHtmlEdit(undefined));
+
+  const handleSubmitHtmlEdit = useLastCallback(async (source: string) => {
+    if (!htmlEdit) return false;
+    const global = getGlobal();
+    const messageList = selectCurrentMessageList(global);
+    if (messageList?.chatId !== chatId || messageList.type !== messageListType
+      || messageList.threadId !== threadId) return false;
+    const target = htmlEdit.message;
+    if (source === htmlEdit.source) return true;
+    const { richMessage } = target.content;
+    if (richMessage) {
+      if (!source.trim()) return false;
+      return new Promise<true | string>((resolve) => {
+        editMessage({
+          messageList,
+          messageId: target.id,
+          text: '',
+          richMessage: { ...richMessage, html: source },
+          onResult: (result) => resolve(result || lang('MessageHtmlSaveFailed')),
+        });
+      });
+    }
+    const formatted = parseMessageHtml(source);
+    const { photo, video, document, audio, voice, paidMedia } = target.content;
+    const isCaption = Boolean(photo || video || document || audio || voice || paidMedia);
+    const limit = selectCurrentLimit(global, isCaption ? 'captionLength' : 'messageLength');
+    if ((!isCaption && !formatted.text.trim()) || getUtf8Length(formatted.text) > limit) return false;
+    return new Promise<true | string>((resolve) => {
+      editMessage({
+        messageList,
+        messageId: target.id,
+        ...formatted,
+        onResult: (result) => resolve(result || lang('MessageHtmlSaveFailed')),
+      });
+    });
+  });
 
   useOnIntersect(bottomMarkerRef, isTypingDraft || isLocalOnly ? undefined : observeIntersectionForBottom);
 
@@ -2144,9 +2213,19 @@ const Message = ({
           threadId={threadId}
           onClose={handleContextMenuClose}
           onCloseAnimationEnd={handleContextMenuHide}
+          onEditHtml={handleOpenHtmlEdit}
           repliesThreadInfo={repliesThreadInfo}
           noReplies={noReplies}
           detectedLanguage={detectedLanguage}
+        />
+      )}
+      {htmlEdit && (
+        <MessageHtmlModal
+          title="MessageHtmlEdit"
+          submitLabel="MessageHtmlSave"
+          initialValue={htmlEdit.source}
+          onClose={handleCloseHtmlEdit}
+          onSubmit={handleSubmitHtmlEdit}
         />
       )}
       {isDeclineDialogOpen && (

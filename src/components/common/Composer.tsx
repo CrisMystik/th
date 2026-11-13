@@ -153,6 +153,7 @@ import { fetch } from '../../util/mediaLoader';
 import { MEMO_EMPTY_ARRAY } from '../../util/memo';
 import { getServerTime } from '../../util/serverTime';
 import stopEvent from '../../util/stopEvent';
+import { parseMessageHtml } from '../../util/text/messageHtml';
 import { getUtf8Length } from '../../util/text/textFormat';
 import { EMPTY_RICH_MEDIA_CAPTION } from '../../util/tiptap/richMedia';
 import windowSize from '../../util/windowSize';
@@ -213,6 +214,7 @@ import BotMenuButton from '../middle/composer/BotMenuButton';
 import ComposerEmbeddedMessage from '../middle/composer/ComposerEmbeddedMessage';
 import CustomSendMenu from '../middle/composer/CustomSendMenu.async';
 import DropArea, { DropAreaState } from '../middle/composer/DropArea.async';
+import MessageHtmlModal from '../middle/composer/MessageHtmlModal';
 import MessageInput from '../middle/composer/MessageInput.async';
 import RecordModeMenu, { type RecordMode } from '../middle/composer/RecordModeMenu';
 import RoundVideoRecorder from '../middle/composer/RoundVideoRecorder';
@@ -582,6 +584,7 @@ const Composer = ({
   const sendMessageAction = useSendMessageAction(chatId, threadId);
   const [isInputHasFocus, markInputHasFocus, unmarkInputHasFocus] = useFlag();
   const [isAttachMenuOpen, onAttachMenuOpen, onAttachMenuClose] = useFlag();
+  const [htmlSendMode, setHtmlSendMode] = useState<'regular' | 'rich'>();
   const [
     isRemoveFormattingModalOpen,
     openRemoveFormattingModal,
@@ -1784,6 +1787,34 @@ const Composer = ({
     handleSendCore(currentAttachments, isSilent, scheduledAt, scheduleRepeatPeriod, shouldSkipWebPagePreview);
   });
 
+  const handleOpenSendHtml = useLastCallback(() => setHtmlSendMode('regular'));
+  const handleOpenSendRichHtml = useLastCallback(() => setHtmlSendMode('rich'));
+  const handleCloseSendHtml = useLastCallback(() => setHtmlSendMode(undefined));
+
+  const handleSubmitSendHtml = useLastCallback((html: string) => {
+    if (!html.trim() || !currentMessageList || !isForCurrentMessageList || !htmlSendMode
+      || isComposerBlocked || editingMessage || hasAttachments || isForwarding || !validateEphemeralReply()) {
+      return false;
+    }
+
+    const formatted = htmlSendMode === 'regular' ? parseMessageHtml(html) : undefined;
+    if (formatted && (!formatted.text.trim() || !validateTextLength(formatted.text))) return false;
+    if (!checkSlowMode()) return false;
+
+    const richHtmlMessage = htmlSendMode === 'rich' ? { html, blocks: [] } : undefined;
+    handleActionWithPaymentConfirmation(() => {
+      sendMessage({
+        messageList: currentMessageList,
+        text: formatted?.text,
+        entities: formatted?.entities,
+        richMessage: richHtmlMessage,
+        isSilent: isSilentPosting,
+      });
+      if (!isInScheduledList) lastMessageSendTimeSecondsRef.current = getServerTime();
+    });
+    return true;
+  });
+
   const handleSendWithConfirmation = useLastCallback((
     isSilent = false,
     scheduledAt?: number,
@@ -2813,6 +2844,8 @@ const Composer = ({
 
   const effectEmoji = areEffectsSupported && effect?.emoticon;
 
+  const canOpenHtmlSend = isInMessageList && isForCurrentMessageList && !isComposerBlocked
+    && !editingMessage && !hasAttachments && !isForwarding;
   const canExpandRichInput = isInMessageList && !isRichInputExpansionActive && !isEditingMedia;
   const canOpenRichInput = shouldShowRichInputButton && isInMessageList && !hasAttachments && !isRichInputExpanded
     && !isComposerBlocked && !isEditingMedia;
@@ -2884,6 +2917,15 @@ const Composer = ({
           canPlayAnimatedEmojis={canPlayAnimatedEmojis}
           onShowMore={handleReactionPickerOpen}
           className={reactionSelectorTransitonClassNames}
+        />
+      )}
+      {htmlSendMode && isForCurrentMessageList && (
+        <MessageHtmlModal
+          title={htmlSendMode === 'rich' ? 'MessageHtmlSendRich' : 'MessageHtmlSend'}
+          submitLabel="Send"
+          initialValue=""
+          onClose={handleCloseSendHtml}
+          onSubmit={handleSubmitSendHtml}
         />
       )}
       <AttachmentModal
@@ -3047,6 +3089,8 @@ const Composer = ({
               canExpandRichInput={canExpandRichInput}
               menuPositionX={isInMessageList ? 'left' : 'right'}
               onRichInputExpand={handleOpenRichInput}
+              onSendHtml={canOpenHtmlSend ? handleOpenSendHtml : undefined}
+              onSendRichHtml={canOpenHtmlSend ? handleOpenSendRichHtml : undefined}
             />
           )}
           <div

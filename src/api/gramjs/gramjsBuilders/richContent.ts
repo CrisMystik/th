@@ -38,7 +38,26 @@ const TEXT_BLOCK_TYPES = new Set<ApiPageBlock['type']>([
   'thinking',
 ]);
 
-export function buildInputRichMessage(value: ApiInputRichMessage): GramJs.InputRichMessage | undefined {
+export function buildInputRichMessage(value: ApiInputRichMessage): GramJs.TypeInputRichMessage | undefined {
+  if (value.html !== undefined) {
+    if (!value.html.trim()) return undefined;
+    const media = buildRichMessageMedia(value.blocks);
+    if (!media) return undefined;
+
+    const files = [
+      ...media.photos.map((photo) => new GramJs.InputRichFilePhoto({ id: `photo_${photo.id}`, photo })),
+      ...media.documents.map((document) => new GramJs.InputRichFileDocument({
+        id: `document_${document.id}`, document,
+      })),
+    ];
+    return new GramJs.InputRichMessageHTML({
+      html: value.html,
+      rtl: value.isRtl,
+      noautolink: value.shouldDisableAutoLink,
+      files: files.length ? files : undefined,
+    });
+  }
+
   const blocks = buildMtpPageBlocks(value.blocks);
   const media = buildRichMessageMedia(value.blocks);
   if (!blocks.length || blocks.some((block) => !block) || !media) {

@@ -264,6 +264,15 @@
 "CallRateLabel" = "Please rate the quality of your call";
 "CallRateComment" = "Comment (optional)";
 "Send" = "Send";
+"MessageHtmlSend" = "Send HTML";
+"MessageHtmlSendRich" = "Send Rich HTML";
+"MessageHtmlEdit" = "Edit HTML";
+"MessageHtmlCaption" = "Edit caption HTML";
+"MessageHtmlSource" = "HTML source";
+"MessageHtmlSave" = "Save changes";
+"MessageHtmlInvalid" = "Check the message content and length, then try again.";
+"MessageHtmlSaveFailed" = "Telegram could not save your changes.";
+"MessageHtmlUnavailable" = "This message could not be opened as HTML.";
 "RequestPeerChooseUser_one" = "Choose User";
 "RequestPeerChooseUser_other" = "Choose Users";
 "RequestPeerChooseBot_one" = "Choose a Bot";

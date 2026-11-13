@@ -653,6 +653,8 @@ export interface ActionPayloads {
   };
   editMessage: {
     messageList?: MessageList;
+    messageId?: number;
+    onResult?: (result?: true | string) => void;
     text: string;
     attachments?: ApiAttachment[];
     entities?: ApiMessageEntity[];

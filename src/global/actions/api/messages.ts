@@ -893,21 +893,28 @@ addActionHandler('sendDiceInCurrentChat', (global, actions, payload): ActionRetu
 
 addActionHandler('editMessage', (global, actions, payload): ActionReturnType => {
   const {
-    messageList, text, entities, richMessage, attachments, tabId = getCurrentTabId(),
+    messageList, messageId, text, entities, richMessage, attachments, onResult, tabId = getCurrentTabId(),
   } = payload;
 
   if (!messageList) {
+    onResult?.();
     return;
   }
 
   const { chatId, threadId, type: messageListType } = messageList;
   const chat = selectChat(global, chatId);
-  const message = selectEditingMessage(global, chatId, threadId, messageListType);
+  const message = messageId === undefined
+    ? selectEditingMessage(global, chatId, threadId, messageListType)
+    : messageListType === 'scheduled' ? selectScheduledMessage(global, chatId, messageId)
+      : selectChatMessage(global, chatId, messageId);
   if (!chat || !message) {
+    onResult?.();
     return;
   }
 
-  actions.setEditingId({ messageId: undefined, tabId });
+  if (messageId === undefined || selectEditingMessage(global, chatId, threadId, messageListType)?.id === messageId) {
+    actions.setEditingId({ messageId: undefined, tabId });
+  }
 
   (async () => {
     let attachment = attachments?.[0];
@@ -917,21 +924,35 @@ addActionHandler('editMessage', (global, actions, payload): ActionReturnType => 
         attachment = await processMessageVideo(message, attachment);
       } catch {
         actions.showNotification({ message: { key: 'VideoProcessingFailed' }, tabId });
+        onResult?.();
         return;
       }
-      if (!attachment) return;
+      if (!attachment) {
+        onResult?.();
+        return;
+      }
     }
 
-    await sendWithUploadProgress(global, Boolean(attachments), (progressCallback) => callApi('editMessage', {
-      chat,
+    const result = await sendWithUploadProgress(
+      global,
+      Boolean(attachments),
+      (progressCallback) => callApi('editMessage', {
+        chat,
+        message,
+        attachment,
+        text,
+        entities: richMessage ? undefined : entities,
+        richMessage,
+        shouldReportResult: Boolean(onResult),
+        noWebPage: selectNoWebPage(global, chatId, threadId),
+      }, progressCallback),
       message,
-      attachment,
-      text,
-      entities: richMessage ? undefined : entities,
-      richMessage,
-      noWebPage: selectNoWebPage(global, chatId, threadId),
-    }, progressCallback), message);
-  })();
+    );
+    onResult?.(result);
+  })().catch((err: unknown) => {
+    if (!onResult) throw err;
+    onResult(err instanceof Error ? err.message : undefined);
+  });
 });
 
 addActionHandler('editTodo', (global, actions, payload): ActionReturnType => {

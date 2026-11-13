@@ -1,0 +1,112 @@
+.root :global(.modal-dialog).dialog {
+  display: flex;
+  flex-direction: column;
+
+  width: min(58rem, calc(100vw - 2rem));
+  max-width: none;
+  height: min(46rem, calc(100dvh - 2rem));
+}
+
+.root .content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.75rem;
+
+  min-height: 0;
+}
+
+.editor {
+  position: relative;
+
+  overflow: hidden;
+  flex: 1;
+
+  min-height: 0;
+  border: 1px solid var(--color-borders);
+  border-radius: 0.5rem;
+
+  background: var(--color-background-secondary);
+}
+
+.highlight,
+.input {
+  position: absolute;
+  inset: 0;
+
+  direction: ltr;
+  overflow: auto;
+
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 1rem;
+  border: 0;
+
+  font: 0.875rem / 1.6 monospace;
+  text-align: left;
+  tab-size: 2;
+  white-space: pre;
+}
+
+.highlight {
+  pointer-events: none;
+  scrollbar-width: none;
+  color: var(--color-text);
+}
+
+.input {
+  resize: none;
+  scrollbar-width: none;
+
+  color: transparent;
+
+  background: transparent;
+  outline: none;
+  caret-color: var(--color-text);
+}
+
+.input::selection {
+  color: transparent;
+  background: color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+.editor:focus-within {
+  border-color: var(--color-primary);
+}
+
+.tag {
+  color: var(--color-primary);
+}
+
+.attribute {
+  color: var(--color-green);
+}
+
+.entity,
+.error {
+  color: var(--color-error);
+}
+
+.comment {
+  color: var(--color-text-secondary);
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+@media (max-width: 600px), (pointer: coarse) and (max-width: 900px) {
+  .root :global(.modal-dialog).dialog {
+    width: 100vw;
+    max-width: none !important;
+    height: 100dvh;
+    max-height: none;
+    margin: 0;
+    padding-bottom: env(safe-area-inset-bottom);
+    border-radius: 0;
+  }
+}
