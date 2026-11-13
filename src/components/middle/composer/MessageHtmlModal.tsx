@@ -101,7 +101,8 @@ const MessageHtmlModal = ({
       contentClassName={styles.content}
     >
       <div className={styles.editor}>
-        <pre ref={highlightRef} className={styles.highlight} aria-hidden>{highlighted}</pre>
+        {/* Let browser Find select the editable source instead of the highlighted copy. */}
+        <pre ref={highlightRef} className={styles.highlight} aria-hidden inert>{highlighted}</pre>
         <textarea
           className={styles.input}
           aria-label={lang('MessageHtmlSource')}
