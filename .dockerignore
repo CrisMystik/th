@@ -1,0 +1,10 @@
+.git
+node_modules
+dist
+.cache
+coverage
+.env
+.env.*
+!.env.example
+npm-debug.log*
+tauri/target
