@@ -4,10 +4,6 @@ import {
 
 import type { RegularLangKey } from '../../../types/language';
 
-import { IS_EMOJI_SUPPORTED } from '../../../util/browser/windowEnvironment';
-import { handleEmojiLoad, LOADED_EMOJIS } from '../../../util/emoji/emoji';
-import splitEmoji from '../../../util/emoji/splitEmoji';
-
 import useLang from '../../../hooks/useLang';
 import useLastCallback from '../../../hooks/useLastCallback';
 
@@ -27,52 +23,27 @@ type OwnProps = {
 const HTML_TOKEN = /<!--[\s\S]*?(?:-->|$)|<\/?[\w:-]+(?:[^"'<>]|"[^"]*"|'[^']*')*>|&(?:#x[\da-f]+|#\d+|\w+);/gi;
 const ATTRIBUTE_VALUE = /"[^"]*"|'[^']*'/g;
 
-function renderSourceText(value: string) {
-  if (IS_EMOJI_SUPPORTED) return value;
-
-  return splitEmoji(value, 'small').map((part) => {
-    if (typeof part === 'string') return part;
-    const { src, text } = part;
-    const isLoaded = LOADED_EMOJIS.has(src);
-
-    return (
-      <span className={styles.emoji}>
-        {text}
-        <img
-          className={isLoaded ? styles.emojiImage + ' open' : styles.emojiImage}
-          src={src}
-          alt=""
-          data-path={src}
-          draggable={false}
-          onLoad={isLoaded ? undefined : handleEmojiLoad}
-        />
-      </span>
-    );
-  });
-}
-
 function highlightHtml(value: string) {
   const parts = [];
   let offset = 0;
   for (const match of value.matchAll(HTML_TOKEN)) {
     const [token] = match;
-    parts.push(renderSourceText(value.slice(offset, match.index)));
+    parts.push(value.slice(offset, match.index));
     offset = match.index + token.length;
     if (token[0] !== '<' || token.startsWith('<!--')) {
-      parts.push(<span className={token[0] === '<' ? styles.comment : styles.entity}>{renderSourceText(token)}</span>);
+      parts.push(<span className={token[0] === '<' ? styles.comment : styles.entity}>{token}</span>);
       continue;
     }
     const tagParts = [];
     let tagOffset = 0;
     for (const part of token.matchAll(ATTRIBUTE_VALUE)) {
-      tagParts.push(renderSourceText(token.slice(tagOffset, part.index)),
-        <span className={styles.attribute}>{renderSourceText(part[0])}</span>);
+      tagParts.push(token.slice(tagOffset, part.index), <span className={styles.attribute}>{part[0]}</span>);
       tagOffset = part.index + part[0].length;
     }
-    tagParts.push(renderSourceText(token.slice(tagOffset)));
+    tagParts.push(token.slice(tagOffset));
     parts.push(<span className={styles.tag}>{tagParts}</span>);
   }
-  parts.push(renderSourceText(value.slice(offset)), '\n');
+  parts.push(value.slice(offset), '\n');
   return parts;
 }
 

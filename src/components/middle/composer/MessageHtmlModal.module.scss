@@ -1,3 +1,5 @@
+@import url("https://emoji.wolfbot.ga/AppleColorEmoji.css");
+
 .root :global(.modal-dialog).dialog {
   display: flex;
   flex-direction: column;
@@ -44,7 +46,7 @@
   padding: 1rem;
   border: 0;
 
-  font: 0.875rem / 1.6 monospace;
+  font: 0.875rem / 1.6 Consolas, Menlo, "Liberation Mono", "Apple Color Emoji", monospace;
   text-align: left;
   tab-size: 2;
   white-space: pre;
@@ -54,30 +56,6 @@
   pointer-events: none;
   scrollbar-width: none;
   color: var(--color-text);
-}
-
-.emoji {
-  position: relative;
-}
-
-.emoji:has(> .emojiImage:global(.open)) {
-  color: transparent;
-}
-
-.emojiImage {
-  position: absolute;
-  inset-block-end: 0;
-  inset-inline-start: 50%;
-  transform: translateX(-50%);
-
-  width: 1em;
-  height: 1em;
-
-  visibility: hidden;
-}
-
-.emojiImage:global(.open) {
-  visibility: visible;
 }
 
 .input {

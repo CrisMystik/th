@@ -308,8 +308,8 @@ function buildCsp(appEnv: string) {
   script-src 'self' 'wasm-unsafe-eval'
     https://t.me/_websync_ https://telegram.me/_websync_ https://telegram.dog/_websync_;
   worker-src 'self'${appEnv === 'development' ? ' blob:' : ''};
-  style-src 'self' 'unsafe-inline';
-  font-src 'self' data:;
+  style-src 'self' 'unsafe-inline' https://emoji.wolfbot.ga/AppleColorEmoji.css;
+  font-src 'self' data: https://emoji.wolfbot.ga;
   img-src 'self' data: blob: https://ss3.4sqi.net/img/categories_v2/;
   media-src 'self' blob: data:;
   object-src 'none';
