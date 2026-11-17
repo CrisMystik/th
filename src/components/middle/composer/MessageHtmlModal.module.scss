@@ -1,5 +1,14 @@
 @import url("https://emoji.wolfbot.ga/AppleColorEmoji.css");
 
+@font-face {
+  font-family: "HTML Editor Mono";
+  font-weight: 100 700;
+  font-style: normal;
+
+  font-display: swap;
+  src: url("../../../assets/fonts/RobotoMono-Variable.ttf") format("truetype");
+}
+
 .root :global(.modal-dialog).dialog {
   display: flex;
   flex-direction: column;
@@ -46,7 +55,7 @@
   padding: 1rem;
   border: 0;
 
-  font: 0.875rem / 1.6 Consolas, Menlo, "Liberation Mono", "Droid Sans Mono", "Apple Color Emoji", monospace;
+  font: 0.875rem / 1.6 "HTML Editor Mono", "Apple Color Emoji", monospace;
   text-align: left;
   tab-size: 2;
   white-space: pre;
